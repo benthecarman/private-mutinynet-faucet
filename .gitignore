@@ -1,0 +1,5 @@
+/target
+/bitcoin_datadir
+/lnd_datadir
+/faucet_datadir
+.env

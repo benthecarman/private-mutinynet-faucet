@@ -1,0 +1,114 @@
+version: "3.7"
+
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
+
+services:
+  bitcoind:
+    container_name: "bitcoind"
+    image: fedimint/mutinynet-bitcoind:master
+    environment:
+      RPCPASSWORD: $RPCPASSWORD
+    command: --rpcuser=bitcoin --rpcpassword=$RPCPASSWORD -zmqpubrawblock=tcp://[::]:48332 -zmqpubrawtx=tcp://[::]:48333
+    logging: *default-logging
+    ports:
+      - "0.0.0.0:38333:38333"
+    volumes:
+      - "bitcoin_datadir:/root/.bitcoin"
+    restart: always
+
+  lnd:
+    container_name: "lnd"
+    image: lightninglabs/lnd:v0.18.3-beta
+    user: "0:1000"
+    logging: *default-logging
+    restart: always
+    stop_grace_period: 10m
+    depends_on:
+      - bitcoind
+    environment:
+      RPCPASSWORD: $RPCPASSWORD
+    command: [
+      "--bitcoin.active",
+      "--bitcoin.signet",
+      "--bitcoin.node=bitcoind",
+      "--maxpendingchannels=10",
+      "--rpclisten=0.0.0.0:10009",
+      "--restlisten=0.0.0.0:8080",
+      "--bitcoind.rpchost=bitcoind:38332",
+      "--bitcoind.rpcuser=bitcoin",
+      "--bitcoind.rpcpass=$RPCPASSWORD",
+      "--bitcoind.zmqpubrawblock=tcp://bitcoind:48332",
+      "--bitcoind.zmqpubrawtx=tcp://bitcoind:48333",
+      "--db.bolt.auto-compact",
+      "--db.prune-revocation",
+      "--alias=My Private Faucet",
+      #      "--externalip=mutinynet.com",
+      #      "--externalip=gfg7fwat27mnsmlog7wbgi6a53f2b5rj56bwokcfk45bacnb4z5kt5ad.onion",
+      #      "--tlsextradomain=mutinynet.com",
+      "--tlsextradomain=lnd",
+      "--protocol.option-scid-alias",
+      "--protocol.wumbo-channels",
+      "--accept-keysend",
+      "--minchansize=25000",
+      "--noseedbackup",
+      "--gc-canceled-invoices-on-startup",
+      "--coin-selection-strategy=random",
+      "--protocol.custom-message=513",
+      "--protocol.custom-nodeann=39",
+      "--protocol.custom-init=39",
+    ]
+    volumes:
+      - lnd_datadir:/root/.lnd
+    ports:
+      - "9735:9735"
+      - "10009:10009"
+      - "8080:8080"
+
+  faucet:
+    container_name: "faucet"
+    image: ghcr.io/mutinywallet/mutinynet-faucet:master
+    user: "0:1000"
+    logging: *default-logging
+    restart: always
+    stop_grace_period: 1m
+    depends_on:
+      - faucet_backend
+    volumes:
+      - faucet_datadir:/root/.faucet
+    ports:
+      - "3000:3000"
+  faucet_backend:
+    container_name: "faucet_backend"
+    image: ghcr.io/mutinywallet/mutinynet-faucet-rs:master
+    depends_on:
+      - lnd
+    environment:
+      RUST_LOG: "info"
+      BITCOIN_RPC_HOST_AND_PORT: "bitcoind:38332"
+      BITCOIN_RPC_USER: "bitcoin"
+      BITCOIN_RPC_PASSWORD: $RPCPASSWORD
+      NSEC: $NSEC
+      NETWORK: "signet"
+      HOST: "https://faucet.mutinynet.com"
+      GRPC_PORT: "10009"
+      GRPC_HOST: "lnd"
+      TLS_CERT_PATH: "/root/.lnd/tls.cert"
+      ADMIN_MACAROON_PATH: "/root/.lnd/data/chain/bitcoin/signet/admin.macaroon"
+    user: "0:1000"
+    logging: *default-logging
+    restart: always
+    stop_grace_period: 1m
+    volumes:
+      - lnd_datadir:/root/.lnd:ro
+    ports:
+      - "3001:3001"
+
+volumes:
+  bitcoin_datadir:
+  lnd_datadir:
+  faucet_datadir:
