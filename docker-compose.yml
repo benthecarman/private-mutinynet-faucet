@@ -16,6 +16,7 @@ services:
     command: --rpcuser=bitcoin --rpcpassword=$RPCPASSWORD -zmqpubrawblock=tcp://[::]:48332 -zmqpubrawtx=tcp://[::]:48333
     logging: *default-logging
     ports:
+      - "38332:38332"
       - "0.0.0.0:38333:38333"
     volumes:
       - "bitcoin_datadir:/root/.bitcoin"
