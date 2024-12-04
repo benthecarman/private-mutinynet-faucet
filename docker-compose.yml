@@ -76,12 +76,8 @@ services:
     logging: *default-logging
     restart: always
     stop_grace_period: 1m
-    depends_on:
-      - faucet_backend
     volumes:
       - faucet_datadir:/root/.faucet
-    ports:
-      - "3000:3000"
   faucet_backend:
     container_name: "faucet_backend"
     image: ghcr.io/mutinywallet/mutinynet-faucet-rs:master
@@ -105,8 +101,18 @@ services:
     stop_grace_period: 1m
     volumes:
       - lnd_datadir:/root/.lnd:ro
+
+  nginx:
+    image: nginx:1.21-alpine@sha256:686aac2769fd6e7bab67663fd38750c135b72d993d0bb0a942ab02ef647fc9c3
+    init: true
+    restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - faucet
+      - faucet_backend
 
 volumes:
   bitcoin_datadir:
