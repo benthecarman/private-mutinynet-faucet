@@ -24,7 +24,7 @@ services:
 
   lnd:
     container_name: "lnd"
-    image: lightninglabs/lnd:v0.18.3-beta
+    image: lightninglabs/lnd:v0.18.4-beta
     user: "0:1000"
     logging: *default-logging
     restart: always
@@ -92,8 +92,11 @@ services:
       BITCOIN_RPC_USER: "bitcoin"
       BITCOIN_RPC_PASSWORD: $RPCPASSWORD
       NSEC: $NSEC
+      JWT_SECRET: $JWT_SECRET
+      GITHUB_CLIENT_ID: $GITHUB_CLIENT_ID
+      GITHUB_CLIENT_SECRET: $GITHUB_CLIENT_SECRET
       NETWORK: "signet"
-      HOST: "https://faucet.mutinynet.com"
+      HOST: "https://faucet.mutinynet.com" # change this to your domain
       GRPC_PORT: "10009"
       GRPC_HOST: "lnd"
       TLS_CERT_PATH: "/root/.lnd/tls.cert"
@@ -107,6 +110,7 @@ services:
     platform: linux/amd64
 
   nginx:
+    container_name: "faucet_backend"
     image: nginx:1.21-alpine@sha256:686aac2769fd6e7bab67663fd38750c135b72d993d0bb0a942ab02ef647fc9c3
     init: true
     restart: unless-stopped
